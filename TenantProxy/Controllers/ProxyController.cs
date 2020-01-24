@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using TenantProxy.Services;
 
 namespace TenantProxy.Controllers
@@ -27,8 +28,12 @@ namespace TenantProxy.Controllers
         {
             var odataService = new TenantXSODataProxyService(tenantId, _baseHref);
             var result = odataService.GetServiceDefinition();
+
+            dynamic jsonObject = JsonConvert.DeserializeObject(result);
+            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
+
             Response.ContentType = "application/json";
-            return Content(result);
+            return Content(reducedJson);
         }
 
         [HttpGet]
@@ -37,8 +42,12 @@ namespace TenantProxy.Controllers
         {
             var odataService = new TenantXSODataProxyService(tenantId, _baseHref, "tenant");
             var result = odataService.GetEntitySetData(entitySet, Request.QueryString.ToString());
+            
+            dynamic jsonObject = JsonConvert.DeserializeObject(result);
+            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
+            
             Response.ContentType = "application/json";
-            return Content(result);
+            return Content(reducedJson);
         }
     }
 }
