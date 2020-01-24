@@ -23,20 +23,22 @@ namespace TenantProxy.Controllers
 
         [HttpGet]
         [Route("/{tenantId}")]
-        public ActionResult<string> GetData([FromRoute] string tenantId)
+        public ActionResult GetData([FromRoute] string tenantId)
         {
             var odataService = new TenantXSODataProxyService(tenantId, _baseHref);
             var result = odataService.GetServiceDefinition();
-            return result;
+            Response.ContentType = "application/json";
+            return Content(result);
         }
 
         [HttpGet]
         [Route("/{tenantId}/{entitySet}")]
-        public ActionResult<string> GetData([FromRoute] string tenantId, [FromRoute] string entitySet)
+        public ActionResult GetData([FromRoute] string tenantId, [FromRoute] string entitySet)
         {
             var odataService = new TenantXSODataProxyService(tenantId, _baseHref, "tenant");
             var result = odataService.GetEntitySetData(entitySet, Request.QueryString.ToString());
-            return result;   
+            Response.ContentType = "application/json";
+            return Content(result);
         }
     }
 }
