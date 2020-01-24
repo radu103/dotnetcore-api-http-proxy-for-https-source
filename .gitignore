@@ -5,3 +5,4 @@
 /TenantProxy/.vs/TenantProxy
 /TenantProxy/bin/Debug/netcoreapp3.1
 /TenantProxy/obj
+/TenantProxy/bin/Release/netcoreapp3.1
