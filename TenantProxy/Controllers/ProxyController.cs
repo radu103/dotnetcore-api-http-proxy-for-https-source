@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using TenantProxy.Services;
@@ -14,40 +15,40 @@ namespace TenantProxy.Controllers
     public class ProxyController : ControllerBase
     {
         private readonly ILogger<ProxyController> _logger;
+        private IMemoryCache _memoryCache;
         private string _baseHref = string.Empty;
 
-        public ProxyController(ILogger<ProxyController> logger)
+        public ProxyController(IMemoryCache memoryCache, ILogger<ProxyController> logger)
         {
+            this._memoryCache = memoryCache;
             _logger = logger;
             _baseHref = "https://hxehost:51027/analytics.xsodata";
         }
 
         [HttpGet]
         [Route("/{tenantId}")]
-        public ActionResult GetData([FromRoute] string tenantId)
+        public ActionResult GetServiceDefinition([FromRoute] string tenantId)
         {
-            var odataService = new TenantXSODataProxyService(tenantId, _baseHref);
+            var odataService = new TenantXSODataProxyService(_memoryCache, tenantId, _baseHref);
+
             var result = odataService.GetServiceDefinition();
 
-            dynamic jsonObject = JsonConvert.DeserializeObject(result);
-            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
-
             Response.ContentType = "application/json";
-            return Content(reducedJson);
+
+            return Content(result);
         }
 
         [HttpGet]
         [Route("/{tenantId}/{entitySet}")]
-        public ActionResult GetData([FromRoute] string tenantId, [FromRoute] string entitySet)
+        public ActionResult GetServiceData([FromRoute] string tenantId, [FromRoute] string entitySet)
         {
-            var odataService = new TenantXSODataProxyService(tenantId, _baseHref, "tenant");
+            var odataService = new TenantXSODataProxyService(_memoryCache, tenantId, _baseHref, "tenant");
+
             var result = odataService.GetEntitySetData(entitySet, Request.QueryString.ToString());
             
-            dynamic jsonObject = JsonConvert.DeserializeObject(result);
-            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
-            
             Response.ContentType = "application/json";
-            return Content(reducedJson);
+
+            return Content(result);
         }
     }
 }

@@ -1,6 +1,10 @@
-﻿using System;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace TenantProxy.Services
 {
@@ -11,6 +15,9 @@ namespace TenantProxy.Services
         private string _tenantColumnName = string.Empty;
 
         private string _filterTenantTemplate = "{TENANT_COLUMN_NAME} eq '{TENANT_ID}'";
+        
+        private IMemoryCache _memoryCache = null;
+        private TimeSpan expirationInterval = TimeSpan.FromMinutes(1);        
 
         public string BaseHref {
             get
@@ -71,7 +78,7 @@ namespace TenantProxy.Services
             }
         }
 
-        public TenantXSODataProxyService(string tenantId = "", string baseHref = "", string tenantColumnName = "tenant")
+        public TenantXSODataProxyService(IMemoryCache memoryCache, string tenantId = "", string baseHref = "", string tenantColumnName = "tenant")
         {
             if (!string.IsNullOrEmpty(baseHref))
             {
@@ -80,6 +87,8 @@ namespace TenantProxy.Services
 
             _tenantId = tenantId;
             _tenantColumnName = tenantColumnName;
+
+            _memoryCache = memoryCache;
         }
 
         public string GetServiceDefinition()
@@ -89,7 +98,20 @@ namespace TenantProxy.Services
                 throw new Exception("BaseHref not set !");
             }
 
-            var request = GetRequest(_baseHref + "?$format=json");
+            var url = _baseHref + "?$format=json";
+
+            var md5 = ComputeMD5Hash(url);
+            if (_memoryCache != null)
+            {
+                string cacheValue = string.Empty;
+                _memoryCache.TryGetValue(md5, out cacheValue);
+                if (!string.IsNullOrEmpty(cacheValue))
+                {
+                    return cacheValue;
+                }
+            }
+
+            var request = GetRequest(url);
 
             var response = (HttpWebResponse)request.GetResponse();
             Stream responseStream = response.GetResponseStream();
@@ -100,6 +122,15 @@ namespace TenantProxy.Services
             streamReader.Close();
             responseStream.Close();
             response.Close();
+
+            if (_memoryCache != null)
+            {
+                var cacheEntry = _memoryCache.GetOrCreate(md5, entry =>
+                {
+                    entry.AbsoluteExpirationRelativeToNow = expirationInterval;
+                    return result;
+                });
+            }
 
             return result;
         }
@@ -157,6 +188,17 @@ namespace TenantProxy.Services
                 }
             }
 
+            var md5 = ComputeMD5Hash(url);
+            if (_memoryCache != null)
+            {
+                string cacheValue = string.Empty;
+                _memoryCache.TryGetValue(md5, out cacheValue);
+                if (!string.IsNullOrEmpty(cacheValue))
+                {
+                    return cacheValue;
+                }
+            }
+
             var request = GetRequest(url);
 
             var response = (HttpWebResponse)request.GetResponse();
@@ -169,7 +211,36 @@ namespace TenantProxy.Services
             responseStream.Close();
             response.Close();
 
-            return result;
+            dynamic jsonObject = JsonConvert.DeserializeObject(result);
+            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
+
+            if (_memoryCache != null)
+            {
+                var cacheEntry = _memoryCache.GetOrCreate(md5, entry =>
+                {
+                    entry.AbsoluteExpirationRelativeToNow = expirationInterval;
+                    return reducedJson;
+                });
+            }
+
+            return reducedJson;
+        }
+
+        private string ComputeMD5Hash(string input)
+        {
+            // step 1, calculate MD5 hash from input
+            MD5 md5 = System.Security.Cryptography.MD5.Create();
+            byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
+            byte[] hash = md5.ComputeHash(inputBytes);
+
+            // step 2, convert byte array to hex string
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < hash.Length; i++)
+            {
+                sb.Append(hash[i].ToString("X2"));
+            }
+
+            return sb.ToString();
         }
 
         private HttpWebRequest GetRequest(string remoteUrl)
