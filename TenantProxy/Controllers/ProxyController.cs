@@ -22,7 +22,16 @@ namespace TenantProxy.Controllers
         }
 
         [HttpGet]
+        [Route("/favicon.ico")]
+        [ResponseCache(Duration=int.MaxValue)]
+        public ActionResult GetFavicon([FromRoute] string tenantId)
+        {
+            return NotFound();
+        }
+
+        [HttpGet]
         [Route("/{tenantId}")]
+        [ResponseCache(NoStore=true)]
         public ActionResult GetServiceDefinition([FromRoute] string tenantId)
         {
             var odataService = new TenantXSODataProxyService(_memoryCache, tenantId, "tenant", _baseHref);
@@ -31,14 +40,16 @@ namespace TenantProxy.Controllers
 
             Response.ContentType = "application/json";
 
-            return Content(result);
+            return Content(result);            
         }
 
         [HttpGet]
         [Route("/{tenantId}/{entitySet}")]
+        [ResponseCache(NoStore = true)]
         public ActionResult GetServiceData([FromRoute] string tenantId, [FromRoute] string entitySet)
         {
-            var newBaseHref = string.Format("{0}://{1}", Request.Scheme.ToString(), Request.Host.ToUriComponent());
+            var newBaseHref = string.Format("{0}://{1}/{2}", Request.Scheme.ToString(), Request.Host.ToUriComponent(), tenantId);
+            
             var odataService = new TenantXSODataProxyService(_memoryCache, tenantId, "tenant", _baseHref, newBaseHref);
 
             var result = odataService.GetEntitySetData(entitySet, Request.QueryString.ToString());

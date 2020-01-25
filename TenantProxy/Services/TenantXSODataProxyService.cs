@@ -233,9 +233,19 @@ namespace TenantProxy.Services
             responseStream.Close();
             response.Close();
 
+            var reducedJson = string.Empty;
             dynamic jsonObject = JsonConvert.DeserializeObject(result);
-            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results).ToString();
 
+            if (jsonObject.d.results != null)
+            {
+                reducedJson = JsonConvert.SerializeObject(jsonObject.d.results).ToString();
+            }
+            else
+            {
+                reducedJson = JsonConvert.SerializeObject(jsonObject.d).ToString();
+            }
+
+            // replace base href
             if (!string.IsNullOrEmpty(_newBaseHref))
             {
                 reducedJson = reducedJson.Replace(_baseHref, _newBaseHref);
