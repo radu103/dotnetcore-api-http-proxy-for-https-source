@@ -11,6 +11,8 @@ namespace TenantProxy.Services
     public class TenantXSODataProxyService
     {
         private string _baseHref = string.Empty;
+        private string _newBaseHref = string.Empty;
+
         private string _tenantId = string.Empty;
         private string _tenantColumnName = string.Empty;
 
@@ -30,6 +32,21 @@ namespace TenantProxy.Services
                     _baseHref = value.ToString();
                 else
                     _baseHref = string.Empty;
+            }
+        }
+
+        public string NewBaseHref
+        {
+            get
+            {
+                return _newBaseHref;
+            }
+            set
+            {
+                if (value != null)
+                    _newBaseHref = value.ToString();
+                else
+                    _newBaseHref = string.Empty;
             }
         }
 
@@ -78,11 +95,16 @@ namespace TenantProxy.Services
             }
         }
 
-        public TenantXSODataProxyService(IMemoryCache memoryCache, string tenantId = "", string baseHref = "", string tenantColumnName = "tenant")
+        public TenantXSODataProxyService(IMemoryCache memoryCache, string tenantId = "", string tenantColumnName = "tenant", string baseHref = "", string newBaseHref = "")
         {
             if (!string.IsNullOrEmpty(baseHref))
             {
                 _baseHref = baseHref;
+            }
+
+            if (!string.IsNullOrEmpty(newBaseHref))
+            {
+                _newBaseHref = newBaseHref;
             }
 
             _tenantId = tenantId;
@@ -212,7 +234,12 @@ namespace TenantProxy.Services
             response.Close();
 
             dynamic jsonObject = JsonConvert.DeserializeObject(result);
-            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results);
+            var reducedJson = JsonConvert.SerializeObject(jsonObject.d.results).ToString();
+
+            if (!string.IsNullOrEmpty(_newBaseHref))
+            {
+                reducedJson = reducedJson.Replace(_baseHref, _newBaseHref);
+            }
 
             if (_memoryCache != null)
             {
