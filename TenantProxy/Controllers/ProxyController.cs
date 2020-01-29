@@ -18,7 +18,7 @@ namespace TenantProxy.Controllers
         {
             _memoryCache = memoryCache;
             _logger = logger;
-            _baseHref = "https://hxehost:51027/analytics.xsodata";
+            _baseHref = "https://hxehost:51096/analytics.xsodata";
         }
 
         [HttpGet]
